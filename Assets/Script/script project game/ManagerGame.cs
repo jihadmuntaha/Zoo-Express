@@ -9,10 +9,10 @@ public class ManagerGame : MonoBehaviour
     public bool punyaDaun = false;
 
     [Header("Visual Makanan di Bak Mobil")]
-    public GameObject buahSemangkaDiBak; // Drag objek semangka di bak ke sini
-    public GameObject daunDiBak;         // Drag objek daun di bak ke sini
+    public GameObject buahSemangkaDiBak;
+    public GameObject daunDiBak;
 
-    [Header("UI Canvas")]
+    [Header("UI Canvas HUD")]
     public TextMeshProUGUI teksStatusMakanan;
     public TextMeshProUGUI teksTimer;
 
@@ -20,39 +20,43 @@ public class ManagerGame : MonoBehaviour
     public float sisaWaktu = 40f;
     private bool gameSelesai = false;
 
-    // --- TAMBAHAN FITUR PAUSE ---
     [Header("Sistem Pause")]
-    [SerializeField] private GameObject panelPause; // Drag object Panel_Pause di Canvas ke sini
+    [SerializeField] private GameObject panelPause;
     private bool sedangPause = false;
+
+    [Header("Sistem Game Over")]
+    [SerializeField] private GameObject panelGameOver;
+
+    // --- SOUND SYSTEM GABUNGAN ---
+    [Header("Sistem Audio Gameplay")]
+    [SerializeField] private AudioSource audioSourceBGM;    // Tarik BGM_Gameplay ke sini
+    [SerializeField] private AudioSource audioSourceMesin;  // Tarik SFX_Mesin ke sini
+    [SerializeField] private AudioSource audioSourceGameOver; // SLOT BARU: Tarik AudioSource khusus Game Over ke sini
 
     void Start()
     {
         UpdateUIStatus("Tidak Membawa Apapun");
-        AturVisualBak(false, false); // Pastikan awalnya tidak ada visual makanan di bak
+        AturVisualBak(false, false);
 
-        // Memastikan waktu game berjalan normal saat awal play (anti-freeze)
+        if (panelPause != null) panelPause.SetActive(false);
+        if (panelGameOver != null) panelGameOver.SetActive(false);
+
+        // Pastikan audio khusus Game Over mati saat game baru mulai
+        if (audioSourceGameOver != null) audioSourceGameOver.Stop();
+
         Time.timeScale = 1f;
     }
 
     void Update()
     {
-        // --- DETEKSI INPUT TOMBOL ESCAPE (PC) UNTUK PAUSE ---
         if (Input.GetKeyDown(KeyCode.Escape) && !gameSelesai)
         {
-            if (sedangPause)
-            {
-                ResumeGame();
-            }
-            else
-            {
-                PauseGame();
-            }
+            if (sedangPause) ResumeGame();
+            else PauseGame();
         }
 
-        // Jika game selesai atau sedang dipause, hentikan hitung mundur timer
         if (gameSelesai || sedangPause) return;
 
-        // --- SISTEM TIMERS ---
         if (sisaWaktu > 0)
         {
             sisaWaktu -= Time.deltaTime;
@@ -64,32 +68,27 @@ public class ManagerGame : MonoBehaviour
         }
     }
 
-    // --- FUNGSI LOGIC PAUSE & RESUME ---
-
-    // Fungsi untuk menjeda game (Bisa dipanggil via ESC atau Tombol UI HUD di Android)
     public void PauseGame()
     {
+        if (gameSelesai) return;
         sedangPause = true;
-        if (panelPause != null) panelPause.SetActive(true); // Munculkan UI Panel Pause
-        Time.timeScale = 0f; // Membekukan semua fisika, gerakan mobil, dan timer
+        if (panelPause != null) panelPause.SetActive(true);
+        Time.timeScale = 0f;
     }
 
-    // Fungsi untuk melanjutkan game (Dipakai di Tombol RESUME)
     public void ResumeGame()
     {
         sedangPause = false;
-        if (panelPause != null) panelPause.SetActive(false); // Sembunyikan UI Panel Pause
-        Time.timeScale = 1f; // Mengembalikan game berjalan normal kembali
+        if (panelPause != null) panelPause.SetActive(false);
+        Time.timeScale = 1f;
     }
 
-    // Fungsi untuk kembali ke Main Menu (Dipakai di Tombol MAIN MENU)
     public void KembaliKeMainMenu()
     {
-        Time.timeScale = 1f; // PENTING! Kembalikan ke 1 agar scene main menu tidak ikut membeku
-        SceneManager.LoadScene("MainMenu"); // Ganti dengan nama Scene Main Menu kamu yang sebenarnya
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("MainMenu");
     }
 
-    // Fungsi untuk mengatur visual buah di bak mobil
     public void AturVisualBak(bool tampilkanSemangka, bool tampilkanDaun)
     {
         if (buahSemangkaDiBak != null) buahSemangkaDiBak.SetActive(tampilkanSemangka);
@@ -98,25 +97,48 @@ public class ManagerGame : MonoBehaviour
 
     public void UpdateUIStatus(string status)
     {
-        teksStatusMakanan.text = "Membawa: " + status;
+        if (teksStatusMakanan != null)
+        {
+            teksStatusMakanan.text = "Membawa: " + status;
+        }
     }
 
     public void LolosAtauKalah(bool apakahMenang)
     {
         gameSelesai = true;
-        Time.timeScale = 1f; // Pastikan waktu normal kembali sebelum ganti scene
 
         if (apakahMenang)
         {
-            // Saat menang, pastikan semua visual di bak langsung hilang bersih
+            Time.timeScale = 1f;
             AturVisualBak(false, false);
-
             int sceneSekarang = SceneManager.GetActiveScene().buildIndex;
             SceneManager.LoadScene(sceneSekarang + 1);
         }
         else
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            // --- LOGIC SAAT GAME OVER (WAKTU HABIS) ---
+            Time.timeScale = 0f;
+
+            // 1. Matikan BGM Utama & Suara Mesin biar gak tabrakan
+            if (audioSourceBGM != null) audioSourceBGM.Stop();
+            if (audioSourceMesin != null) audioSourceMesin.Stop();
+
+            // 2. Bunyikan Musik/SFX Game Over khusus
+            if (audioSourceGameOver != null)
+            {
+                audioSourceGameOver.Play();
+            }
+
+            if (panelGameOver != null)
+            {
+                panelGameOver.SetActive(true);
+            }
         }
+    }
+
+    public void RetryLevel()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
