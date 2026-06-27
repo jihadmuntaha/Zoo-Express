@@ -27,11 +27,19 @@ public class ManagerGame : MonoBehaviour
     [Header("Sistem Game Over")]
     [SerializeField] private GameObject panelGameOver;
 
-    // --- SOUND SYSTEM GABUNGAN ---
+    // --- FITUR BARU: SISTEM MENANG (WIN) ---
+    [Header("Sistem Menang (Win)")]
+    [SerializeField] private GameObject panelWin; // Drag objek Panel_Win ke sini
+
+    // --- TAMBAHAN FITUR TUTORIAL ---
+    [Header("Sistem Tutorial Awal")]
+    [SerializeField] private GameObject panelTutorial; // Drag objek Panel_Tutorial ke sini
+    private bool tutorialSelesai = false; // Penanda apakah game sudah boleh dimulai
+
     [Header("Sistem Audio Gameplay")]
-    [SerializeField] private AudioSource audioSourceBGM;    // Tarik BGM_Gameplay ke sini
-    [SerializeField] private AudioSource audioSourceMesin;  // Tarik SFX_Mesin ke sini
-    [SerializeField] private AudioSource audioSourceGameOver; // SLOT BARU: Tarik AudioSource khusus Game Over ke sini
+    [SerializeField] private AudioSource audioSourceBGM;
+    [SerializeField] private AudioSource audioSourceMesin;
+    [SerializeField] private AudioSource audioSourceGameOver;
 
     void Start()
     {
@@ -40,15 +48,29 @@ public class ManagerGame : MonoBehaviour
 
         if (panelPause != null) panelPause.SetActive(false);
         if (panelGameOver != null) panelGameOver.SetActive(false);
+        if (panelWin != null) panelWin.SetActive(false); // Pastikan panel win mati di awal
 
-        // Pastikan audio khusus Game Over mati saat game baru mulai
+        // LOGIC TUTORIAL: Jika panel tutorial ada, freeze dunia game di awal!
+        if (panelTutorial != null)
+        {
+            panelTutorial.SetActive(true);
+            tutorialSelesai = false;
+            Time.timeScale = 0f; // Bekukan game sementara pemain membaca tutorial
+        }
+        else
+        {
+            tutorialSelesai = true;
+            Time.timeScale = 1f;
+        }
+
         if (audioSourceGameOver != null) audioSourceGameOver.Stop();
-
-        Time.timeScale = 1f;
     }
 
     void Update()
     {
+        // Jika tutorial belum selesai dibaca, jangan jalankan input pause game dulu
+        if (!tutorialSelesai) return;
+
         if (Input.GetKeyDown(KeyCode.Escape) && !gameSelesai)
         {
             if (sedangPause) ResumeGame();
@@ -68,9 +90,17 @@ public class ManagerGame : MonoBehaviour
         }
     }
 
+    // --- FUNGSI BARU: DIPANGGIL SAAT TOMBOL 'MULAI' DI PANEL TUTORIAL DIPENCET ---
+    public void TutupTutorialDanMulai()
+    {
+        tutorialSelesai = true;
+        if (panelTutorial != null) panelTutorial.SetActive(false); // Sembunyikan panel tutorial
+        Time.timeScale = 1f; // Jalankan kembali waktu dan fisik game!
+    }
+
     public void PauseGame()
     {
-        if (gameSelesai) return;
+        if (gameSelesai || !tutorialSelesai) return;
         sedangPause = true;
         if (panelPause != null) panelPause.SetActive(true);
         Time.timeScale = 0f;
@@ -109,31 +139,34 @@ public class ManagerGame : MonoBehaviour
 
         if (apakahMenang)
         {
-            Time.timeScale = 1f;
+            // --- KINI MEMBUKA PANEL WIN SAAT MENANG ---
+            Time.timeScale = 0f; // Freeze game agar mobil langsung berhenti saat menang
             AturVisualBak(false, false);
-            int sceneSekarang = SceneManager.GetActiveScene().buildIndex;
-            SceneManager.LoadScene(sceneSekarang + 1);
+
+            if (panelWin != null)
+            {
+                panelWin.SetActive(true); // Memunculkan panel berisi Next Game, Retry, Main Menu
+            }
+
+            if (audioSourceMesin != null) audioSourceMesin.Stop(); // Matikan suara mesin biar rapi
         }
         else
         {
-            // --- LOGIC SAAT GAME OVER (WAKTU HABIS) ---
             Time.timeScale = 0f;
-
-            // 1. Matikan BGM Utama & Suara Mesin biar gak tabrakan
             if (audioSourceBGM != null) audioSourceBGM.Stop();
             if (audioSourceMesin != null) audioSourceMesin.Stop();
+            if (audioSourceGameOver != null) audioSourceGameOver.Play();
 
-            // 2. Bunyikan Musik/SFX Game Over khusus
-            if (audioSourceGameOver != null)
-            {
-                audioSourceGameOver.Play();
-            }
-
-            if (panelGameOver != null)
-            {
-                panelGameOver.SetActive(true);
-            }
+            if (panelGameOver != null) panelGameOver.SetActive(true);
         }
+    }
+
+    // --- FUNGSI BARU UNTUK TOMBOL NEXT GAME / NEXT LEVEL ---
+    public void NextLevel()
+    {
+        Time.timeScale = 1f; // Kembalikan waktu normal sebelum pindah scene
+        int sceneSekarang = SceneManager.GetActiveScene().buildIndex;
+        SceneManager.LoadScene(sceneSekarang + 1); // Pindah otomatis ke scene index berikutnya (Level 2)
     }
 
     public void RetryLevel()

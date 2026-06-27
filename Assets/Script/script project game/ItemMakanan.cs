@@ -15,22 +15,24 @@ public class ItemMakanan : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // Memastikan yang menabrak wadah ini adalah mobil (Player)
         if (other.CompareTag("Player"))
         {
+            // LOG BARU: Untuk memastikan objek mana yang mendeteksi tabrakan
+            Debug.Log("WADAH DITABRAK: " + gameObject.name + " | Status iniSemangka di Inspector: " + iniSemangka);
+
             if (iniSemangka)
             {
                 gameManager.punyaSemangka = true;
                 gameManager.punyaDaun = false;
                 gameManager.UpdateUIStatus("Semangka (Untuk Gajah)");
-                gameManager.AturVisualBak(true, false); // Munculin semangka, sembunyiin daun
+                gameManager.AturVisualBak(true, false);
             }
             else
             {
                 gameManager.punyaDaun = true;
                 gameManager.punyaSemangka = false;
                 gameManager.UpdateUIStatus("Daun (Untuk Jerapah)");
-                gameManager.AturVisualBak(false, true); // Sembunyiin semangka, munculin daun
+                gameManager.AturVisualBak(false, true);
             }
         }
     }
